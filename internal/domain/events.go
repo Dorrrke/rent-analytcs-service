@@ -55,5 +55,5 @@ type RentEndedEvent struct {
 	UserID          string    `json:"user_id"`
 	EndedAt         time.Time `json:"ended_at"`
 	DurationMinutes int64     `json:"duration_minutes"`
-	TotalPrince     float64   `json:"total_price"`
+	TotalPrice      float64   `json:"total_price"`
 }

@@ -135,6 +135,50 @@ func (s *AanalyticsService) HandleRentStarted(ctx context.Context, e domain.Rent
 	})
 }
 
+func (s *AanalyticsService) HandleRentEnded(ctx context.Context, e domain.RentEndedEvent) error {
+	payload, err := json.Marshal(e)
+	if err != nil {
+		return err
+	}
+
+	if err := s.repo.SaveEvent(ctx, &domain.AnalyticsEvent{
+		ID:           uuid.NewString(),
+		Subject:      domain.SubjectRentEnded,
+		EntityID:     e.RentID,
+		Payload:      payload,
+		OccurratedAt: e.EndedAt,
+		CreatedAt:    time.Now().UTC(),
+	}); err != nil {
+		return err
+	}
+
+	if err := s.repo.UpsertUserStats(ctx, &domain.UserStats{
+		UserID:         e.UserID,
+		TotalRents:     1,
+		TotalSpent:     e.TotalPrice,
+		LastActivityAt: e.EndedAt,
+		UpdatedAt:      time.Now().UTC(),
+	}); err != nil {
+		return err
+	}
+
+	if err := s.repo.UpsertCarStats(ctx, &domain.CarStats{
+		CarID:        e.CarID,
+		TotalRents:   1,
+		TotalRevenue: e.TotalPrice,
+		TotalMinutes: int64(e.DurationMinutes),
+		UpdatedAt:    time.Now().UTC(),
+	}); err != nil {
+		return err
+	}
+
+	return s.repo.UpsertDailyMetric(ctx, &domain.DailyMetric{
+		Date:           truncateToDay(e.EndedAt),
+		RentsComplited: 1,
+		Revenue:        e.TotalPrice,
+	})
+}
+
 // --- helpers ----------------
 
 func truncateToDay(t time.Time) time.Time {
